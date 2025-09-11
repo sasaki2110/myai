@@ -57,8 +57,7 @@ load_dotenv()
 api_key = os.getenv("OPENAI_API_KEY")
 ```
 
-## 共通処理
-
+## 共通
 - OpenAIからのレスポンスから、モデル名・トークン数を取得し、
   今回のセッション料金を計算。
 cost_utils.py
@@ -108,7 +107,34 @@ cost_utils.py
 
 ## フェーズ3：Function Calling  
 
+- 簡単なFunctionCall の例  
+03_FunctionCalling.py
+
+ここは、OpenAIに特化しすぎて汎用性が無いので、さらっとで終わらせる。
+
+- MCP Loop Observation→Thought→Action→Feedback のループ 概念理解  
+03.5_MCP_LoopDemo.py
+
 ## フェーズ4：MCP（Model Context Protocol）  
+
+FastMCPが動かなかったので、代わりにFastAPIで低レベル処理を実装。  
+逆に、低レベルから学習できる教材になった。  
+
+- FastAPIを利用した、低レベルMCPサーバー  
+04_mcpServer.py
+
+下記でサーバー起動  
+```bash
+python 04_mcpServer.py
+```
+
+- 低レベルなクライアント処理  
+04_mcpClient.py
+
+下記でクライアント起動  
+```bash
+python 04_mcpClient.py
+```
 
 ## フェーズ5：FastMCPで簡略化  
 
