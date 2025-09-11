@@ -65,45 +65,45 @@ cost_utils.py
 
 ## フェーズ0：OpenAI API基礎  
 
-- OpenAI()を利用して、簡単にGPTを呼び出すサンプル
+- OpenAI()を利用して、簡単にGPTを呼び出すサンプル  
 00_baseOpenApi.py
 
-- その回答を複数にする例
+- その回答を複数にする例  
 00_baseOpenApiMultiChices.py
 
-- Async 呼び出し例
+- Async 呼び出し例  
 00_baseOpenApiAsync.py
 
-- 新しい呼び出し例（client.responses.create）
+- 新しい呼び出し例（client.responses.create）  
 00_baseOpenApiNew.py
 
 ## フェーズ1：ReAct（手書き実装）  
 
-- ReAct 疑似実行（１回のコールで全部実行）
+- ReAct 疑似実行（１回のコールで全部実行）  
 01_ReAct.py
 
-- ReAct 疑似実行（試行、アクション、（観察）、回答　の流れを別々にコール）
+- ReAct 疑似実行（試行、アクション、（観察）、回答　の流れを別々にコール）  
 01_ReActStep.py
 
 観察とはLLMの推論結果ではなく、外部（MCP等）から得られる情報。
 
 ## フェーズ1.5：ReAct（複数回LLM呼び出し）  
 
-- LLM呼び出しを１回だけ
+- LLM呼び出しを１回だけ  
 01.5_ReAct_FunctionCall.py
 
-- 複数回LLM呼び出し
+- 複数回LLM呼び出し  
 01.5_ReAct_Loop.py
 
 ## フェーズ2：LangChainでReAct  
 
-- 掛け算ツールを呼び出す例
+- 掛け算ツールを呼び出す例  
 02_ReActOnLangChain.py
 
-- 掛け算ツールと、天気情報モックと、直接回答の例
+- 掛け算ツールと、天気情報モックと、直接回答の例  
 02_ReActOnLangChainMultiTool.py
 
-- 直接回答でエラーが出ないように修正した版
+- 直接回答でエラーが出ないように修正した版  
 02_ReActOnLangChainMultiTool_2.py
 
 ## フェーズ3：Function Calling  
