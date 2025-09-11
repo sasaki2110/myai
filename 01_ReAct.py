@@ -1,5 +1,7 @@
 # react_demo.py
+from cost_utils import UsageCostCalculator
 from openai import OpenAI
+
 client = OpenAI()
 
 prompt = """あなたはReActエージェントです。
@@ -19,3 +21,7 @@ resp = client.chat.completions.create(
 )
 
 print(resp.choices[0].message.content)
+
+# トークン数と料金計算
+calc = UsageCostCalculator(resp)
+calc.report()

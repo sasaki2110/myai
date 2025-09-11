@@ -1,8 +1,15 @@
-# langchain_react.py
+# 02_ReActOnLangChain.py
 from langchain_openai import ChatOpenAI
 from langchain.agents import initialize_agent, Tool
 from langchain.prompts import MessagesPlaceholder
 from langchain.memory import ConversationBufferMemory
+
+# 環境変数の読み込み
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+api_key = os.getenv("OPENAI_API_KEY")
 
 # ツール定義
 def multiply(a: str, b: str) -> str:
@@ -16,7 +23,8 @@ tools = [
     )
 ]
 
-llm = ChatOpenAI(model="gpt-4.1-mini")
+llm = ChatOpenAI(model="gpt-4.1-mini", temperature=0)
+
 memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
 
 agent = initialize_agent(
@@ -27,4 +35,4 @@ agent = initialize_agent(
     verbose=True,
 )
 
-print(agent.run("2 3 を掛けて"))
+print(agent.invoke("2 3 を掛けて"))
