@@ -6,11 +6,14 @@ import requests
 import json
 from typing import Dict, Any, List
 
+# MCPClientクラス(FastMCPを想定)
 class MCPClient:
+    # コンストラクタ
     def __init__(self, base_url: str = "http://localhost:8001"):
         self.base_url = base_url
         self.session = requests.Session()
     
+    # 利用可能なツール一覧を取得
     def get_tools(self) -> List[Dict[str, Any]]:
         """利用可能なツール一覧を取得"""
         try:
@@ -21,19 +24,24 @@ class MCPClient:
             print(f"ツール一覧の取得に失敗しました: {e}")
             return []
     
+    # ツールを呼び出し
     def call_tool(self, tool_name: str, parameters: Dict[str, Any]) -> Any:
         """ツールを呼び出し"""
         try:
+            # ツールを呼び出すリクエストボディ（payload)
             payload = {
                 "tool": tool_name,
                 "parameters": parameters
             }
+            # ツールを呼び出すリクエストを送信
             response = self.session.post(
                 f"{self.base_url}/call",
                 json=payload,
                 headers={"Content-Type": "application/json"}
             )
+            # レスポンスをチェック
             response.raise_for_status()
+            # レスポンスをJSONとしてパース
             result = response.json()
             return result.get("result", "エラー: 結果が取得できませんでした")
         except requests.exceptions.RequestException as e:
@@ -56,6 +64,7 @@ def react_loop(client: MCPClient, user_input: str):
         
         # --- Thought ---
         print(f"\n--- Thought ---")
+        # 疑似LLMを呼び出し、思考を生成（本来はLLMを呼び出す）
         thought = analyze_user_input(observation)
         print(f"Plan: {thought['plan']}")
         print(f"Reasoning: {thought['reasoning']}")
@@ -96,6 +105,7 @@ def react_loop(client: MCPClient, user_input: str):
             print(f"{action_output}")
             break
 
+# 疑似LLM（ユーザー入力を分析してアクションプランを決定）
 def analyze_user_input(input_text: str) -> Dict[str, str]:
     """
     ユーザー入力を分析してアクションプランを決定
