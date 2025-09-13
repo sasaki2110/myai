@@ -136,6 +136,13 @@ python 04_mcpServer.py
 python 04_mcpClient.py
 ```
 
+- LLM統合版クライアント処理  
+04_mcpClientLlm.py
+
+- LLM統合版クライアント処理  （汎用化版）
+04_mcpClientLlm2.py
+
+
 ## フェーズ5：FastMCPで簡略化  
 
 ## ゴール整理  

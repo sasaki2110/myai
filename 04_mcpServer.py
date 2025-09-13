@@ -49,6 +49,24 @@ def get_weather(city: str) -> str:
     print(f"get_weather({city}) = {result}")
     return result
 
+def divide(a: float, b: float) -> float:
+    """
+    2つの数値を割り算します。
+    
+    Args:
+        a: 被除数（割られる数）
+        b: 除数（割る数）
+    
+    Returns:
+        割り算の結果
+    """
+    if b == 0:
+        raise ValueError("ゼロで割ることはできません")
+    
+    result = a / b
+    print(f"divide({a}, {b}) = {result}")
+    return result
+
 # ツール一覧を取得するエンドポイント
 @app.get("/tools")
 async def get_tools():
@@ -62,6 +80,18 @@ async def get_tools():
                 "properties": {
                     "a": {"type": "integer", "description": "最初の数値"},
                     "b": {"type": "integer", "description": "2番目の数値"}
+                },
+                "required": ["a", "b"]
+            }
+        },
+        {
+            "name": "divide",
+            "description": "2つの数値を割り算します。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "a": {"type": "number", "description": "被除数（割られる数）"},
+                    "b": {"type": "number", "description": "除数（割る数）"}
                 },
                 "required": ["a", "b"]
             }
@@ -98,6 +128,15 @@ async def call_tool(request: ToolCallRequest):
         if a is None or b is None:
             return {"error": "Parameters 'a' and 'b' are required for multiply"}
         result = multiply(a, b)
+    elif tool_name == "divide":
+        a = parameters.get("a")
+        b = parameters.get("b")
+        if a is None or b is None:
+            return {"error": "Parameters 'a' and 'b' are required for divide"}
+        try:
+            result = divide(a, b)
+        except ValueError as e:
+            return {"error": str(e)}
     elif tool_name == "get_weather":
         city = parameters.get("city")
         if city is None:
@@ -110,7 +149,7 @@ async def call_tool(request: ToolCallRequest):
 
 if __name__ == "__main__":
     print("MCP Server starting on port 8001...")
-    print("Available tools: multiply, get_weather")
+    print("Available tools: multiply, divide, get_weather")
     print("Press Ctrl+C to stop the server")
     
     # サーバーを起動
