@@ -139,11 +139,19 @@ python 04_mcpClient.py
 - LLM統合版クライアント処理  
 04_mcpClientLlm.py
 
-- LLM統合版クライアント処理  （汎用化版）
+- LLM統合版クライアント処理  （汎用化版）    
 04_mcpClientLlm2.py
 
 
 ## フェーズ5：FastMCPで簡略化  
+
+最低限でお願いしたけど、普通にサンプルが出来た。
+
+- FastMCPを利用した、高レベルMCPサーバー  
+05_mcpServer.py
+
+- FastMCPを利用した、高レベルMCPクライアント  
+05_mcpClient.py
 
 ## ゴール整理  
 
