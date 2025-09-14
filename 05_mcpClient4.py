@@ -17,6 +17,92 @@ from enum import Enum
 # 環境変数を読み込み
 load_dotenv()
 
+# モデルごとの料金（1,000 tokens あたりのドル）
+MODEL_RATES = {
+    "gpt-5": {"input": 1.25, "output": 10.00},
+    "gpt-5-mini": {"input": 0.25, "output": 2.00},
+    "gpt-5-nano": {"input": 0.05, "output": 0.40},
+    "gpt-4o": {"input": 2.50, "output": 10.00},
+    "gpt-4o-mini": {"input": 0.15, "output": 0.60},
+    "gpt-4o-2024-05-13": {"input": 5.00, "output": 15.00},
+    "gpt-4.1": {"input": 2.00, "output": 8.00},
+    "gpt-4.1-mini": {"input": 0.40, "output": 1.60},
+    "gpt-4.1-nano": {"input": 0.10, "output": 0.40},
+}
+
+class UsageCostCalculator:
+    def __init__(self, resp):
+        self.resp = resp
+
+        # モデル名を正規化（バージョン番号を削除）
+        full_model_name = getattr(resp, "model", None) or resp.model
+        self.model = re.sub(r"-\d{4}-\d{2}-\d{2}$", "", full_model_name)
+
+        # トークン数
+        self.prompt_tokens = resp.usage.prompt_tokens
+        self.completion_tokens = resp.usage.completion_tokens
+        self.total_tokens = resp.usage.total_tokens
+
+        # レート取得
+        self.rates = MODEL_RATES.get(self.model)
+        if self.rates is None:
+            # デフォルトレート（gpt-4o-mini相当）
+            self.rates = {"input": 0.15, "output": 0.60}
+            print(f"⚠️  モデル '{self.model}' の料金情報が見つかりません。デフォルトレートを使用します。")
+
+        # 1トークンあたりの料金計算
+        self.input_rate_per_token = self.rates["input"] / 1000
+        self.output_rate_per_token = (
+            self.rates["output"] / 1000 if self.rates["output"] is not None else 0
+        )
+
+        # 利用量計算
+        self.input_cost = self.prompt_tokens * self.input_rate_per_token
+        self.output_cost = self.completion_tokens * self.output_rate_per_token
+        self.total_cost = self.input_cost + self.output_cost
+
+    def get_summary(self):
+        """コスト情報のサマリーを返す"""
+        return {
+            "model": self.model,
+            "prompt_tokens": self.prompt_tokens,
+            "completion_tokens": self.completion_tokens,
+            "total_tokens": self.total_tokens,
+            "input_cost": self.input_cost,
+            "output_cost": self.output_cost,
+            "total_cost": self.total_cost
+        }
+
+@dataclass
+class SessionCostTracker:
+    """セッション全体のコスト追跡"""
+    total_prompt_tokens: int = 0
+    total_completion_tokens: int = 0
+    total_cost: float = 0.0
+    request_count: int = 0
+    model: str = ""
+
+    def add_usage(self, cost_calc: UsageCostCalculator):
+        """使用量を追加"""
+        self.total_prompt_tokens += cost_calc.prompt_tokens
+        self.total_completion_tokens += cost_calc.completion_tokens
+        self.total_cost += cost_calc.total_cost
+        self.request_count += 1
+        if not self.model:
+            self.model = cost_calc.model
+
+    def get_session_summary(self):
+        """セッション全体のサマリーを返す"""
+        return {
+            "model": self.model,
+            "total_requests": self.request_count,
+            "total_prompt_tokens": self.total_prompt_tokens,
+            "total_completion_tokens": self.total_completion_tokens,
+            "total_tokens": self.total_prompt_tokens + self.total_completion_tokens,
+            "total_cost": self.total_cost,
+            "average_cost_per_request": self.total_cost / self.request_count if self.request_count > 0 else 0
+        }
+
 # 設定クラス
 @dataclass
 class MCPConfig:
@@ -82,6 +168,8 @@ class LLMConfig:
     temperature: float = 0.1
     max_tokens: int = 500
     api_key: str = ""
+    use_max_completion_tokens: bool = False
+    use_temperature: bool = True
 
 @dataclass
 class AgentConfig:
@@ -105,6 +193,7 @@ class ConfigurableMCPAgent:
         self.llm_config: Optional[LLMConfig] = None
         self.agent_config: Optional[AgentConfig] = None
         self.client: Optional[Client] = None
+        self.cost_tracker = SessionCostTracker()  # コスト追跡を追加
         self.tools: List[Any] = []
         self.llm_client: Optional[OpenAI] = None
         
@@ -130,11 +219,33 @@ class ConfigurableMCPAgent:
                 if not api_key:
                     raise ValueError("OpenAI APIキーが設定されていません")
             
+            # モデル別設定の取得
+            model_name = llm_config_data.get("model", "gpt-4o-mini")
+            model_settings = llm_config_data.get("modelSettings", {}).get(model_name, {})
+            
+            # トークン設定の決定
+            if model_settings.get("useMaxCompletionTokens", False):
+                max_tokens = model_settings.get("maxCompletionTokens", 500)
+                use_max_completion_tokens = True
+            else:
+                max_tokens = model_settings.get("maxTokens", llm_config_data.get("maxTokens", 500))
+                use_max_completion_tokens = False
+            
+            # 温度設定の決定
+            if model_settings.get("useTemperature", True):
+                temperature = model_settings.get("temperature", llm_config_data.get("temperature", 0.1))
+                use_temperature = True
+            else:
+                temperature = 1.0  # デフォルト値
+                use_temperature = False
+            
             self.llm_config = LLMConfig(
-                model=llm_config_data.get("model", "gpt-4o-mini"),
-                temperature=llm_config_data.get("temperature", 0.1),
-                max_tokens=llm_config_data.get("maxTokens", 500),
-                api_key=api_key
+                model=model_name,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                api_key=api_key,
+                use_max_completion_tokens=use_max_completion_tokens,
+                use_temperature=use_temperature
             )
             
             # エージェント設定の構築
@@ -231,15 +342,37 @@ class ConfigurableMCPAgent:
 
 重要: パラメータは必ずJSON形式で出力し、必須パラメータは必ず含めてください。"""
 
-            response = self.llm_client.chat.completions.create(
-                model=self.llm_config.model,
-                messages=[
+            # リクエストパラメータ
+            request_params = {
+                "model": self.llm_config.model,
+                "messages": [
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_input}
-                ],
-                max_tokens=self.llm_config.max_tokens,
-                temperature=self.llm_config.temperature
-            )
+                ]
+            }
+            
+            # モデル別の温度設定
+            if self.llm_config.use_temperature:
+                request_params["temperature"] = self.llm_config.temperature
+            
+            # モデル別のトークン設定
+            if self.llm_config.use_max_completion_tokens:
+                request_params["max_completion_tokens"] = self.llm_config.max_tokens
+            else:
+                request_params["max_tokens"] = self.llm_config.max_tokens
+            
+            response = self.llm_client.chat.completions.create(**request_params)
+            
+            # コスト追跡を追加
+            try:
+                cost_calc = UsageCostCalculator(response)
+                self.cost_tracker.add_usage(cost_calc)
+                if self.agent_config.debug_mode:
+                    summary = cost_calc.get_summary()
+                    print(f"💰 コスト: ${summary['total_cost']:.6f} (入力: {summary['prompt_tokens']}t, 出力: {summary['completion_tokens']}t)")
+            except Exception as e:
+                if self.agent_config.debug_mode:
+                    print(f"⚠️  コスト計算エラー: {e}")
             
             response_text = response.choices[0].message.content.strip()
             
@@ -364,15 +497,38 @@ class ConfigurableMCPAgent:
                     
                     # フォールバック処理
                     try:
-                        fallback_response = self.llm_client.chat.completions.create(
-                            model=self.llm_config.model,
-                            messages=[
+                        # フォールバック用のリクエストパラメータ
+                        fallback_params = {
+                            "model": self.llm_config.model,
+                            "messages": [
                                 {"role": "system", "content": "ユーザーの質問に直接回答してください。"},
                                 {"role": "user", "content": user_input}
-                            ],
-                            max_tokens=self.llm_config.max_tokens,
-                            temperature=self.llm_config.temperature
-                        )
+                            ]
+                        }
+                        
+                        # モデル別の温度設定
+                        if self.llm_config.use_temperature:
+                            fallback_params["temperature"] = self.llm_config.temperature
+                        
+                        # モデル別のトークン設定
+                        if self.llm_config.use_max_completion_tokens:
+                            fallback_params["max_completion_tokens"] = self.llm_config.max_tokens
+                        else:
+                            fallback_params["max_tokens"] = self.llm_config.max_tokens
+                        
+                        fallback_response = self.llm_client.chat.completions.create(**fallback_params)
+                        
+                        # フォールバック処理のコスト追跡
+                        try:
+                            cost_calc = UsageCostCalculator(fallback_response)
+                            self.cost_tracker.add_usage(cost_calc)
+                            if self.agent_config.debug_mode:
+                                summary = cost_calc.get_summary()
+                                print(f"💰 フォールバックコスト: ${summary['total_cost']:.6f} (入力: {summary['prompt_tokens']}t, 出力: {summary['completion_tokens']}t)")
+                        except Exception as e:
+                            if self.agent_config.debug_mode:
+                                print(f"⚠️  フォールバックコスト計算エラー: {e}")
+                        
                         fallback_answer = fallback_response.choices[0].message.content.strip()
                         return f"回答: {fallback_answer}"
                     except Exception as e:
@@ -409,6 +565,42 @@ async def main():
                 user_input = input("\nUser query: ").strip()
                 
                 if user_input.lower() in ['quit', 'exit', '終了']:
+                    # セッション終了時のコスト表示
+                    print("\n" + "="*50)
+                    print("📊 セッション終了")
+                    print("="*50)
+                    print(f"📁 設定ファイル: {agent.config_path}")
+                    # サーバーURLを取得
+                    server_url = "N/A"
+                    if agent.mcp_config:
+                        try:
+                            server_config = agent.mcp_config.get_server_config(agent.server_name)
+                            host = server_config.get("host", "localhost")
+                            port = server_config.get("port", 8001)
+                            path = server_config.get("path", "/mcp")
+                            server_url = f"http://{host}:{port}{path}"
+                        except:
+                            server_url = "N/A"
+                    print(f"📡 サーバー: {server_url}")
+                    print(f"🤖 LLM: {agent.llm_config.model if agent.llm_config else 'N/A'}")
+                    print(f"🔧 利用可能ツール: {[tool.name for tool in agent.tools] if agent.tools else 'N/A'}")
+                    
+                    # コスト情報を表示
+                    if agent.cost_tracker.request_count > 0:
+                        summary = agent.cost_tracker.get_session_summary()
+                        print("\n💰 コスト情報")
+                        print("-" * 30)
+                        print(f"モデル: {summary['model']}")
+                        print(f"リクエスト数: {summary['total_requests']}")
+                        print(f"入力トークン: {summary['total_prompt_tokens']:,}")
+                        print(f"出力トークン: {summary['total_completion_tokens']:,}")
+                        print(f"総トークン数: {summary['total_tokens']:,}")
+                        print(f"総コスト: ${summary['total_cost']:.6f}")
+                        print(f"平均コスト/リクエスト: ${summary['average_cost_per_request']:.6f}")
+                    else:
+                        print("\n💰 コスト情報: リクエストなし")
+                    
+                    print("="*50)
                     print("👋 終了します。")
                     break
                 

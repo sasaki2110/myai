@@ -29,7 +29,33 @@
     "model": "gpt-4o-mini",
     "temperature": 0.1,
     "maxTokens": 500,
-    "apiKey": "ENV:OPENAI_API_KEY"
+    "apiKey": "ENV:OPENAI_API_KEY",
+    "modelSettings": {
+      "gpt-5-nano": {
+        "useMaxCompletionTokens": true,
+        "maxCompletionTokens": 500,
+        "useTemperature": false,
+        "temperature": 1.0
+      },
+      "gpt-5-mini": {
+        "useMaxCompletionTokens": true,
+        "maxCompletionTokens": 500,
+        "useTemperature": false,
+        "temperature": 1.0
+      },
+      "gpt-4o-mini": {
+        "useMaxCompletionTokens": false,
+        "maxTokens": 500,
+        "useTemperature": true,
+        "temperature": 0.1
+      },
+      "gpt-4o": {
+        "useMaxCompletionTokens": false,
+        "maxTokens": 500,
+        "useTemperature": true,
+        "temperature": 0.1
+      }
+    }
   },
   "agent": {
     "maxIterations": 5,
