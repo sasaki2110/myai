@@ -153,6 +153,16 @@ python 04_mcpClient.py
 - FastMCPを利用した、高レベルMCPクライアント  
 05_mcpClient.py
 
+- 汎用的にした版  
+05_mcpClient2.py
+
+- 汎用的にした版 を もっと FastMCP よりに修正
+05_mcpClient3.py
+
+- 上記の各種設定を外部ファイルで管理
+05_mcpClient4.py
+mcp.json
+
 ## ゴール整理  
 
 - **ReAct**

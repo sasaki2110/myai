@@ -59,6 +59,22 @@ async def get_weather(city: str) -> str:
     print(f"get_weather({city}) = {result}")
     return result
 
+async def get_japan_pm() -> str:
+    """現在の日本の首相を取得します。
+    
+    Returns:
+        日本の首相に関する情報
+    """
+    
+    return "石破茂（第103代） 就任日 2024年（令和6年）11月11日"
+
+"""
+ここから実際のMCPサーバー処理。
+１．FastMCPサーバーのインスタンスを作成
+２．ツールを登録
+３．サーバーを起動
+だけで、サーバーが起動する。
+"""
 # FastMCPサーバーのインスタンスを作成
 mcp = FastMCP("LearningMCPServer")
 
@@ -66,10 +82,11 @@ mcp = FastMCP("LearningMCPServer")
 mcp.tool(multiply)
 mcp.tool(divide)
 mcp.tool(get_weather)
+mcp.tool(get_japan_pm)
 
 if __name__ == "__main__":
     print("FastMCP Server starting...")
-    print("Available tools: multiply, divide, get_weather")
+    print("Available tools: multiply, divide, get_weather, get_japan_pm")
     print("Server will run on http://0.0.0.0:8001")
     print("Press Ctrl+C to stop the server")
     
